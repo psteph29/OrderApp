@@ -6,40 +6,81 @@
 //
 
 import UIKit
+@MainActor
 
 class CategoryTableViewController: UITableViewController {
+    
+//    let menuController = MenuController()
+//    ^^^Create an instance of MenuController so that you can make the appropriate network request in viewDidLoad()
+//
+    var categories = [String]()
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        
+        Task.init {
+            do {
+                let categories = try await MenuController.shared.fetchCategories()
+                updateUI(with: categories)
+            } catch {
+                displayError(error, title: "Failed to Fetch Categories")
+            }
+        }
 
-        // Uncomment the following line to preserve selection between presentations
-        // self.clearsSelectionOnViewWillAppear = false
-
-        // Uncomment the following line to display an Edit button in the navigation bar for this view controller.
-        // self.navigationItem.rightBarButtonItem = self.editButtonItem
     }
+    
+    func updateUI(with categories: [String]) {
+        self.categories = categories
+        self.tableView.reloadData()
+    }
+    
+    func displayError(_ error: Error, title: String) {
+        guard let _ = viewIfLoaded?.window else { return }
+//       ^^^Checks to make sure that the view associated with the TableViewController is currently in a window. This way you don't try to post an alert on a view that is not visible.
+        
+        let alert = UIAlertController(title: title, message: error.localizedDescription, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "Dismiss", style: .default, handler: nil))
+        self.present(alert, animated: true, completion: nil)
+    }
+    
+  
+    @IBSegueAction func showMenu(_ coder: NSCoder, sender: Any?) -> MenuTableViewController? {
+        
+            guard let cell = sender as? UITableViewCell, let indexPath = tableView.indexPath(for: cell) else {
+                return nil
+            }
+            let category = categories[indexPath.row]
+            return MenuTableViewController(coder: coder, category: category)
+        }
 
+    
     // MARK: - Table view data source
 
     override func numberOfSections(in tableView: UITableView) -> Int {
         // #warning Incomplete implementation, return the number of sections
-        return 0
+        return 1
     }
 
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        // #warning Incomplete implementation, return the number of rows
-        return 0
+        return categories.count
     }
 
-    /*
+    
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "reuseIdentifier", for: indexPath)
-
-        // Configure the cell...
-
+        let cell = tableView.dequeueReusableCell(withIdentifier: "Category", for: indexPath)
+        
+        configureCell(cell, forCategoryAt: indexPath)
+    
         return cell
     }
-    */
+    
+    func configureCell(_ cell: UITableViewCell, forCategoryAt indexPath: IndexPath) {
+        let category = categories[indexPath.row]
+        var content = cell.defaultContentConfiguration()
+        content.text = category.capitalized
+        cell.contentConfiguration = content
+    }
+    
 
     /*
     // Override to support conditional editing of the table view.
